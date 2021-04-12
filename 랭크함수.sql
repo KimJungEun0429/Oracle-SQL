@@ -1,0 +1,137 @@
+--랭크함수
+
+--정규화되어 있는 테이블
+CREATE TABLE SALLARY
+(
+    IDX     NUMBER(5)       NOT NULL    PRIMARY KEY,
+    PART    VARCHAR2(30)    NOT NULL,
+    ENAME   VARCHAR2(30)    NOT NULL,
+    PRICE   NUMBER(10)      NOT NULL
+);
+
+INSERT INTO SALLARY VALUES(1,'인사부','홍길동','5000000');
+INSERT INTO SALLARY VALUES(2,'인사부','전우치','4000000');
+INSERT INTO SALLARY VALUES(3,'인사부','김갑순','5000000');
+INSERT INTO SALLARY VALUES(4,'총무부','김갑돌','7000000');
+INSERT INTO SALLARY VALUES(5,'총무부','박우수','2000000');
+INSERT INTO SALLARY VALUES(6,'총무부','김돌쇠','3500000');
+INSERT INTO SALLARY VALUES(7,'생산부','김동욱','6400000');
+INSERT INTO SALLARY VALUES(8,'생산부','이건도','5500000');
+INSERT INTO SALLARY VALUES(9,'구매부','김수인','1500000');
+INSERT INTO SALLARY VALUES(10,'구매부','김소희','4500000');
+
+UPDATE SALLARY SET PRICE = 5500000
+WHERE IDX = 10
+;
+--ROLLBACK;
+--COMMIT;
+
+SELECT * FROM SALLARY;
+
+--ROW_NUMBER()
+--오라클,TIBERO에서만 사용가능
+
+SELECT 
+    IDX, PART, ENAME, PRICE 
+    ,ROW_NUMBER() OVER(ORDER BY PRICE ASC) AS ROW_NUM
+    ,RANK() OVER(ORDER BY PRICE ASC) AS RNK
+    ,DENSE_RANK() OVER(ORDER BY PRICE ASC) AS DENSERNK
+FROM SALLARY
+ORDER BY IDX ASC
+;
+--RANK는 순위
+--ROW_NUMBER는 오더바이대로 정렬하지만 오라클의 판단하에 순서를 주는 것. 그래서 소희랑 건도 숫자를 알아서 줌 ROW가 몇개냐 판단할때 사용
+--DENSE_RANK 같은 값이 나왔을 때, 그것을 인정하지 않고 그냥 쓴다(공동순위없이 순서를 나열)
+--ROW_NUMBER() OVER(ORDER BY PRICE ASC)라고 주었을 때, ROW라는 상관없이 PRICE라는 필드의 값만 보고 나열을 해준다.
+
+SELECT * FROM SALLARY
+ORDER BY PART ASC, ENAME ASC
+;
+--구매부를 찾은 다음에 구매부 내에서 다시 ASC를 정렬한다.
+
+--각 부서별로 월급 RANK를 만들자
+SELECT PART, SUM(PRICE), AVG(PRICE),
+       RANK() OVER(ORDER BY SUM(PRICE) DESC) AS RNK,
+       RANK() OVER(ORDER BY AVG(PRICE) DESC) AS P_AVG
+FROM SALLARY
+GROUP BY PART
+;
+
+SELECT PART, ENAME, PRICE,
+   ROUND(AVG(PRICE) OVER(PARTITION BY PART),2)
+   ,RANK() OVER(ORDER BY PRICE DESC) AS RNK
+FROM SALLARY
+ORDER BY PART ASC
+;
+--집계함수가 올 수 있는 것.
+--ROUND(AVG(PRICE) OVER(PARTITION BY PART),2) 랑 RANK() OVER(ORDER BY PRICE DESC) AS RNK는 정해진 필드 안의 값에 대해
+--정렬이 되는 것이지 앞에 PART,ENAME 등의 ROW와 아무상관이 없다.
+
+--1. 전체 평균 월급과 10명의 각각의 월급과의 차이를 보여주세요
+    
+   SELECT T2.ENAME, T2.PRICE , T1.AVER, T1.AVER - T2.PRICE FROM
+    (
+    SELECT AVG(PRICE) AS AVER
+    FROM SALLARY
+    )T1
+    ,
+    (
+    SELECT ENAME, PRICE 
+    FROM SALLARY    
+    )T2
+    ;
+    --평균 데이터가 하나니까 바로 크로스조인으로 가넝
+
+    
+
+--2. 각 부서별 평균월급의 순위를 구해주세요
+--1번방법
+    SELECT PART, AVG(PRICE) AS AVER
+    ,RANK() OVER(ORDER BY AVG(PRICE) ASC) AS AVER
+    FROM SALLARY
+    GROUP BY PART
+    ;
+    
+--2번방법
+    SELECT PART, AVER, RANK() OVER(ORDER BY AVER DESC) AS RNK 
+    FROM
+    (
+        SELECT PART, AVG(PRICE) AS AVER
+        FROM SALLARY
+        GROUP BY PART
+    )
+    ;
+
+--3. 평균 월급이 3위인 부서의 월급보다 많은 월급을 받고 있는 사원들을 보여주세요
+
+    SELECT * FROM SALLARY
+    WHERE PRICE >
+    (
+    SELECT AVER FROM
+    (
+    SELECT PART, AVG(PRICE) AS AVER,
+    RANK() OVER(ORDER BY AVG(PRICE) ASC) AS RNK
+    FROM SALLARY
+    GROUP BY PART
+    )--평균월급랭킹
+    WHERE RNK = 3--랭킹이 3위인 금액
+    )
+    ;--랭킹이 3위보다 많은 월급을 받는 사원
+    
+
+--정리
+--1.DATE 진짜로 많이 쓴다
+--2.RANK, DENSE_RANK, ROW_NUMVER ORDER BY PARTITION BY(오늘한거 정리)
+--3.NVL, DECODE, CASE WHEN THEN(복습하기)
+    
+--GROUP BY 활용도
+
+SELECT ENAME, COUNT(*) 
+FROM SALLARY
+GROUP BY ENAME
+HAVING COUNT(*) > 1
+;
+
+INSERT INTO SALLARY VALUES(11, '구매부', '홍길동', 4000000);
+
+--COMMIT;
