@@ -1,0 +1,95 @@
+create or replace NONEDITIONABLE PACKAGE BODY PKG_BOARD AS
+
+  PROCEDURE PROC_SEL_BOARDS
+(
+        IN_IDX          IN          NUMBER,
+        IN_TITLE        IN          VARCHAR2,
+        O_CUR           OUT         SYS_REFCURSOR
+) AS
+  BEGIN
+    
+    OPEN O_CUR FOR
+    SELECT * FROM  BOARDS
+    WHERE TITLE LIKE '%' || IN_TITLE || '%'
+    ORDER BY G_NUM DESC, O_NUM ASC
+    ;
+    --WHERE 뒤에 들어가는 필드가 NOT NULL 이면 상관이 없는데 NULL이 허용되어있는 필드라면 데이터가 빠지기 때문에
+    -- NVL(TITLE,' ')라고 처리하면 다 뜬다.
+  END PROC_SEL_BOARDS;
+  
+  PROCEDURE PROC_SEL_BOARDCIBTEBT
+(
+        IN_IDX          IN          NUMBER,  
+        O_CUR           OUT         SYS_REFCURSOR
+)
+AS
+
+BEGIN
+
+    OPEN O_CUR FOR
+    SELECT * FROM BOARDS
+    WHERE IDX = IN_IDX
+    ;
+END PROC_SEL_BOARDCIBTEBT;
+  
+  PROCEDURE PROC_INS_BOARDS
+(
+    IN_TITLE        IN      VARCHAR2, --클라이언트가 적어준 타이틀
+    IN_G_NUM        IN      NUMBER, --클라이언트가 선택한 글의 G_NUM
+    IN_O_NUM        IN      NUMBER, --클라이언트가 선택한 글의 O_NUM
+    IN_L_NUM        IN      NUMBER --클라이언트가 선택한 글의 LEVEL값
+)
+
+AS
+        V_IDX       NUMBER(5);
+        V_G_NUM     NUMBER(5);
+        V_O_NUM     NUMBER(5);
+        V_L_NUM     NUMBER(5);
+
+BEGIN
+
+    --0. 새글이던 답글이던 PRIMARY값이기 때문에 무조건 만들어진다
+    SELECT NVL(MAX(IDX),0) + 1
+    INTO V_IDX
+    FROM BOARDS
+    ;
+    
+--1.새글이냐 답글이냐 판단
+IF IN_G_NUM IS NULL THEN --새글
+
+    SELECT NVL(MAX(G_NUM),0) + 1
+    INTO V_G_NUM
+    FROM BOARDS
+    ;
+    
+    V_O_NUM := 1;
+    
+    V_L_NUM := 1;
+        
+ELSE                     --답글
+    
+    V_G_NUM := IN_G_NUM; 
+    
+    V_O_NUM := IN_O_NUM +1; 
+    
+    UPDATE BOARDS
+    SET O_NUM = O_NUM +1
+    WHERE O_NUM > IN_O_NUM
+    AND G_NUM = IN_G_NUM
+    ;
+    
+    V_L_NUM := IN_L_NUM + 1;
+    
+
+END IF;
+
+INSERT INTO BOARDS
+(IDX, TITLE, G_NUM, O_NUM,L_NUM)
+
+VALUES
+(V_IDX, IN_TITLE, V_G_NUM, V_O_NUM,V_L_NUM)
+;
+
+END PROC_INS_BOARDS;
+
+END PKG_BOARD;
