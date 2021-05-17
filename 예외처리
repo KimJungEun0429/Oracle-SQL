@@ -1,0 +1,32 @@
+CREATE OR REPLACE PROCEDURE PROC_TRANS 
+(
+  IN_MID_IN IN VARCHAR2 
+, IN_MID_OUT IN VARCHAR2 
+, IN_PRICE IN NUMBER 
+, O_ERRCODE OUT VARCHAR2 
+, O_ERRMSG OUT VARCHAR2 
+) AS 
+
+V_NUM       NUMBER(4);
+
+BEGIN
+ 
+ --전우치가 5천원을 홍길동에게 송금
+        INSERT INTO BANK(IDX, GBN, PRICE, NID)
+        VALUES(BSEQ.NEXTVAL, 'O',IN_PRICE,IN_MID_OUT); 
+        --GBN이 O일때 -처리를 하라고 코딩을 짜거나 처음부터 -5000이라고 적어주거나
+       
+        INSERT INTO BANK(IDX, GBN, PRICE, NID)
+        VALUES(BSEQ.NEXTVAL, 'I',IN_PRICE,IN_MID_IN); 
+        
+        
+        EXCEPTION
+            WHEN OTHERS THEN
+            O_ERRCODE := '100';
+            O_ERRMSG := '에러가 발생';     
+            
+            ROLLBACK;
+            /*예외처리를 하지 않았을 때, 에러가 발생하면 자동 ROLLBACK를 해주던데 예외처리를 하면 ROLLBACK가 안된다 
+            컴퓨터는 에러로 받아들이 않기 때문에 프로그램이 잘 짜서 실행이 된 것. 예외처리는 에러 때문에 하는게 아니고
+            말그대로 예외가 발생했을 때 사용하는 것. 에러처리를 예외처리를 이용해서 했다면 반드시 ROLLBACK를 추가해야한다*/
+END PROC_TRANS;
